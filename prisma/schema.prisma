@@ -146,6 +146,7 @@ model User {
   @@index([email])
   @@index([status])
   @@index([role])
+  @@map("user")
 }
 
 model AuthSession {
@@ -163,6 +164,7 @@ model AuthSession {
   @@index([userId])
   @@index([expiresAt])
   @@index([revokedAt])
+  @@map("authsession")
 }
 
 // -----------------------------------------
@@ -208,6 +210,7 @@ model Contact {
   @@index([licenseNumber])
   @@index([status])
   @@index([ownerId])
+  @@map("contact")
 }
 
 model ContactNote {
@@ -221,6 +224,7 @@ model ContactNote {
   updatedAt DateTime  @updatedAt
 
   @@index([contactId])
+  @@map("contactnote")
 }
 
 // -----------------------------------------
@@ -246,6 +250,7 @@ model CadenceEnrollment {
   @@index([nextTouchAt])
   @@index([status])
   @@index([contactId])
+  @@map("cadenceenrollment")
 }
 
 model OutreachTemplate {
@@ -260,6 +265,7 @@ model OutreachTemplate {
   updatedById String?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+  @@map("outreachtemplate")
 }
 
 // -----------------------------------------
@@ -289,6 +295,7 @@ model Conversation {
   @@index([automationMode])
   @@index([lastMessageAt])
   @@index([currentClassification])
+  @@map("conversation")
 }
 
 model Message {
@@ -318,6 +325,7 @@ model Message {
   @@index([contactId, createdAt])
   @@index([providerMessageId])
   @@index([status])
+  @@map("message")
 }
 
 model ConversationGrade {
@@ -332,6 +340,7 @@ model ConversationGrade {
   overrideReason     String?
   overriddenById     String?
   createdAt          DateTime     @default(now())
+  @@map("conversationgrade")
 }
 
 model SuppressionEntry {
@@ -343,6 +352,7 @@ model SuppressionEntry {
   contactId         String?
   createdById       String?
   createdAt         DateTime       @default(now())
+  @@map("suppressionentry")
 }
 
 // -----------------------------------------
@@ -368,6 +378,7 @@ model Property {
   updatedAt         DateTime  @updatedAt
 
   deals             Deal[]
+  @@map("property")
 }
 
 model Deal {
@@ -401,6 +412,7 @@ model Deal {
   @@index([propertyId])
   @@index([status])
   @@index([createdAt])
+  @@map("deal")
 }
 
 model Pipeline {
@@ -413,6 +425,7 @@ model Pipeline {
 
   deals     Deal[]
   stages    PipelineStage[]
+  @@map("pipeline")
 }
 
 model PipelineStage {
@@ -430,6 +443,7 @@ model PipelineStage {
   updatedAt          DateTime    @updatedAt
 
   deals              Deal[]
+  @@map("pipelinestage")
 }
 
 // -----------------------------------------
@@ -454,6 +468,7 @@ model CallLog {
   startedAt         DateTime
   endedAt           DateTime
   createdAt         DateTime         @default(now())
+  @@map("calllog")
 }
 
 model Attachment {
@@ -467,6 +482,7 @@ model Attachment {
   uploadedById String
   deletedAt    DateTime?
   createdAt    DateTime  @default(now())
+  @@map("attachment")
 }
 
 // -----------------------------------------
@@ -486,6 +502,7 @@ model Integration {
   updatedById  String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+  @@map("integration")
 }
 
 model Notification {
@@ -499,6 +516,7 @@ model Notification {
   entityId   String
   readAt     DateTime?
   createdAt  DateTime  @default(now())
+  @@map("notification")
 }
 
 model AuditLog {
@@ -513,6 +531,7 @@ model AuditLog {
   newValuesJson String?  @db.Text
   metadataJson  String?  @db.Text
   createdAt     DateTime @default(now())
+  @@map("auditlog")
 }
 
 model Task {
@@ -541,6 +560,7 @@ model Task {
   @@index([status])
   @@index([contactId])
   @@index([dealId])
+  @@map("task")
 }
 
 model SystemSettings {
@@ -553,6 +573,7 @@ model SystemSettings {
   gradingWeightAddress       Int      @default(35)
   gradingWeightPrice         Int      @default(20)
   updatedAt                  DateTime @updatedAt
+  @@map("systemsettings")
 }
 
 // -----------------------------------------
@@ -577,6 +598,7 @@ model SocialCredential {
   lastTestedAt    DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  @@map("socialcredential")
 }
 
 model MarketingPost {
@@ -589,4 +611,5 @@ model MarketingPost {
   createdBy       String?       
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  @@map("marketingpost")
 }
