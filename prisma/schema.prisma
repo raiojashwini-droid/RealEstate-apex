@@ -1,0 +1,592 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------
+// ENUMS
+// -----------------------------------------
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+  READ_ONLY
+}
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
+enum ContactStatus {
+  QUEUED_FOR_OUTREACH
+  OUTREACH_SENT
+  RESPONDED_QUALIFYING
+  NEEDS_HUMAN_TOUCH
+  LEAD_CREATED
+  NURTURE_30_DAY
+  NOT_INTERESTED
+  WRONG_NUMBER
+  OPTED_OUT_DND
+}
+
+enum ContactTemperature {
+  HOT
+  WARM
+  COLD
+}
+
+enum ConversationAutomationMode {
+  AI_ACTIVE
+  HUMAN_ACTIVE
+  AI_PAUSED
+  ESCALATED
+  CLOSED
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageSenderType {
+  HUMAN
+  AI
+  SYSTEM
+}
+
+enum InboundClassification {
+  INTERESTED
+  NOT_INTERESTED
+  HAS_PROPERTY
+  QUESTION
+  WANTS_CALL
+  OPT_OUT
+  UNCLEAR
+}
+
+enum PipelineType {
+  STANDARD
+  AI_INBOUND
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+  PARKED
+  DUPLICATE
+}
+
+enum DealSource {
+  MANUAL
+  AI_INBOUND
+}
+
+enum IntegrationType {
+  TWILIO
+  MICROSOFT_365
+  OPENAI
+  WEBHOOK
+  OTHER
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum TaskPriority {
+  URGENT
+  HIGH
+  NORMAL
+  LOW
+}
+
+// -----------------------------------------
+// 1. AUTHENTICATION & USERS
+// -----------------------------------------
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  jobTitle      String?
+  avatarUrl     String?
+  role          UserRole     @default(READ_ONLY)
+  status        UserStatus   @default(ACTIVE)
+  isActive      Boolean      @default(true)
+  lastLoginAt   DateTime?
+  deactivatedAt DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  authSessions  AuthSession[]
+  ownedContacts Contact[]      @relation("ContactOwner")
+  ownedDeals    Deal[]         @relation("DealOwner")
+  callLogs      CallLog[]
+  notifications Notification[]
+  auditLogs     AuditLog[]     @relation("AuditActor")
+  assignedTasks Task[]         @relation("TaskAssignee")
+
+  @@index([email])
+  @@index([status])
+  @@index([role])
+}
+
+model AuthSession {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+// -----------------------------------------
+// 2. CONTACTS & REALTOR DIRECTORY
+// -----------------------------------------
+
+model Contact {
+  id                    String              @id @default(uuid())
+  fullName              String
+  licenseNumber         String?
+  brokerage             String?
+  email                 String?
+  normalizedEmail       String?
+  mobilePhone           String?
+  normalizedMobilePhone String?
+  mobileCapable         Boolean             @default(false)
+  market                String              @default("DFW")
+  timezone              String?
+  status                ContactStatus       @default(QUEUED_FOR_OUTREACH)
+  temperature           ContactTemperature?
+  tags                  String?             @db.Text // Comma separated or JSON tags
+  source                String?
+  cadenceStartAt        DateTime?
+  lastContactedAt       DateTime?
+  lastResponseAt        DateTime?
+  ownerId               String?
+  owner                 User?               @relation("ContactOwner", fields: [ownerId], references: [id])
+  doNotContact          Boolean             @default(false)
+  deletedAt             DateTime?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  notes                 ContactNote[]
+  cadenceEnrollments    CadenceEnrollment[]
+  conversations         Conversation[]
+  deals                 Deal[]
+  callLogs              CallLog[]
+  messages              Message[]
+  tasks                 Task[]
+
+  @@index([normalizedEmail])
+  @@index([normalizedMobilePhone])
+  @@index([licenseNumber])
+  @@index([status])
+  @@index([ownerId])
+}
+
+model ContactNote {
+  id        String    @id @default(uuid())
+  contactId String
+  contact   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  authorId  String
+  body      String    @db.Text
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([contactId])
+}
+
+// -----------------------------------------
+// 3. CADENCE & OUTREACH ENGINE
+// -----------------------------------------
+
+model CadenceEnrollment {
+  id             String    @id @default(uuid())
+  contactId      String    @unique
+  contact        Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  status         String
+  cadenceStartAt DateTime?
+  lastTouchAt    DateTime?
+  lastReplyAt    DateTime?
+  nextTouchAt    DateTime?
+  touchNumber    Int       @default(0)
+  pausedAt       DateTime?
+  pauseReason    String?
+  resumedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([nextTouchAt])
+  @@index([status])
+  @@index([contactId])
+}
+
+model OutreachTemplate {
+  id          String         @id @default(uuid())
+  channel     MessageChannel
+  name        String
+  touchNumber Int
+  subject     String?
+  body        String         @db.Text
+  isActive    Boolean        @default(true)
+  createdById String?
+  updatedById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+// -----------------------------------------
+// 4. AI CONVERSATIONS & MESSAGING
+// -----------------------------------------
+
+model Conversation {
+  id                        String                     @id @default(uuid())
+  contactId                 String
+  contact                   Contact                    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  automationMode            ConversationAutomationMode @default(AI_ACTIVE)
+  aiReplyCountSinceTakeover Int                        @default(0)
+  aiReplyCap                Int                        @default(5)
+  escalatedAt               DateTime?
+  escalatedReason           String?
+  humanTakeoverAt           DateTime?
+  humanTakeoverById         String?
+  lastMessageAt             DateTime?
+  currentClassification     InboundClassification?
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+
+  messages                  Message[]
+  grades                    ConversationGrade[]
+
+  @@index([contactId])
+  @@index([automationMode])
+  @@index([lastMessageAt])
+  @@index([currentClassification])
+}
+
+model Message {
+  id                String            @id @default(uuid())
+  conversationId    String
+  conversation      Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  contactId         String
+  contact           Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  channel           MessageChannel
+  direction         MessageDirection
+  senderType        MessageSenderType
+  senderUserId      String?
+  providerMessageId String?           @unique
+  idempotencyKey    String?           @unique
+  toAddress         String
+  fromAddress       String
+  body              String            @db.Text
+  status            String
+  segmentCount      Int?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  failedAt          DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([conversationId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([providerMessageId])
+  @@index([status])
+}
+
+model ConversationGrade {
+  id                 String       @id @default(uuid())
+  conversationId     String
+  conversation       Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  score              Float
+  letterGrade        String
+  criteriaJson       String       @db.Text
+  calculationVersion String
+  isManualOverride   Boolean      @default(false)
+  overrideReason     String?
+  overriddenById     String?
+  createdAt          DateTime     @default(now())
+}
+
+model SuppressionEntry {
+  id                String         @id @default(uuid())
+  channel           MessageChannel
+  normalizedAddress String
+  reason            String
+  source            String
+  contactId         String?
+  createdById       String?
+  createdAt         DateTime       @default(now())
+}
+
+// -----------------------------------------
+// 5. PROPERTIES & DEALS PIPELINE
+// -----------------------------------------
+
+model Property {
+  id                String    @id @default(uuid())
+  normalizedAddress String    @unique
+  address           String
+  city              String
+  state             String
+  zip               String
+  type              String?
+  beds              Float?
+  baths             Float?
+  squareFeet        Float?
+  yearBuilt         Int?
+  askingPrice       Float?
+  listingStatus     String?
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  deals             Deal[]
+}
+
+model Deal {
+  id             String        @id @default(uuid())
+  propertyId     String
+  property       Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  contactId      String
+  contact        Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  pipelineId     String
+  pipeline       Pipeline      @relation(fields: [pipelineId], references: [id])
+  stageId        String
+  stage          PipelineStage @relation(fields: [stageId], references: [id])
+  ownerId        String
+  owner          User          @relation("DealOwner", fields: [ownerId], references: [id])
+  source         DealSource
+  gradeSnapshot  String?
+  status         DealStatus    @default(OPEN)
+  lossReason     String?
+  originalDealId String?
+  closedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  callLogs       CallLog[]
+  tasks          Task[]
+
+  @@index([contactId])
+  @@index([ownerId])
+  @@index([pipelineId, stageId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Pipeline {
+  id        String          @id @default(uuid())
+  name      String
+  type      PipelineType
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  deals     Deal[]
+  stages    PipelineStage[]
+}
+
+model PipelineStage {
+  id                 String      @id @default(uuid())
+  pipelineId         String
+  pipeline           Pipeline    @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  name               String
+  orderIndex         Int
+  probability        Float
+  isTerminal         Boolean     @default(false)
+  terminalOutcome    DealStatus?
+  requiresLossReason Boolean     @default(false)
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  deals              Deal[]
+}
+
+// -----------------------------------------
+// 6. CALLS & ATTACHMENTS
+// -----------------------------------------
+
+model CallLog {
+  id                String           @id @default(uuid())
+  contactId         String
+  contact           Contact          @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  dealId            String?
+  deal              Deal?            @relation(fields: [dealId], references: [id])
+  userId            String
+  user              User             @relation(fields: [userId], references: [id])
+  direction         MessageDirection
+  providerCallId    String?
+  durationSeconds   Int
+  outcome           String
+  notes             String?          @db.Text
+  recordingUrl      String?
+  consentNoticeUsed Boolean          @default(false)
+  startedAt         DateTime
+  endedAt           DateTime
+  createdAt         DateTime         @default(now())
+}
+
+model Attachment {
+  id           String    @id @default(uuid())
+  entityType   String
+  entityId     String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String
+  uploadedById String
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+}
+
+// -----------------------------------------
+// 7. INTEGRATIONS, TASKS & SYSTEM
+// -----------------------------------------
+
+model Integration {
+  id           String            @id @default(uuid())
+  name         String
+  type         IntegrationType
+  status       IntegrationStatus @default(DISCONNECTED)
+  credentials  String            @db.Text
+  config       String?           @db.Text
+  lastTestedAt DateTime?
+  lastError    String?           @db.Text
+  createdById  String?
+  updatedById  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String
+  title      String
+  body       String    @db.Text
+  entityType String
+  entityId   String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  actorUserId   String?
+  actor         User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  action        String
+  entityType    String
+  entityId      String
+  requestId     String?
+  oldValuesJson String?  @db.Text
+  newValuesJson String?  @db.Text
+  metadataJson  String?  @db.Text
+  createdAt     DateTime @default(now())
+}
+
+model Task {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?      @db.Text
+  type         String
+  priority     TaskPriority @default(NORMAL)
+  status       String       @default("PENDING")
+  
+  assignedToId String?
+  assignedTo   User?        @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  
+  contactId    String?
+  contact      Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  dealId       String?
+  deal         Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  
+  dueAt        DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([contactId])
+  @@index([dealId])
+}
+
+model SystemSettings {
+  id                         String   @id @default(uuid())
+  aiPersonaInstructions      String   @db.Text
+  aiConsecutiveReplyCap      Int      @default(4)
+  cadenceRetouchIntervalDays Int      @default(3)
+  cadenceSendWindowStart     String   @default("09:00")
+  cadenceSendWindowEnd       String   @default("18:00")
+  gradingWeightAddress       Int      @default(35)
+  gradingWeightPrice         Int      @default(20)
+  updatedAt                  DateTime @updatedAt
+}
+
+// -----------------------------------------
+// 8. MARKETING & SOCIAL
+// -----------------------------------------
+
+enum SocialChannel {
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+}
+
+model SocialCredential {
+  id              String        @id @default(uuid())
+  channel         SocialChannel @unique
+  accountId       String?       
+  accessToken     String?
+  pageId          String?       
+  pageName        String?       
+  webhookUrl      String?
+  isConnected     Boolean       @default(false)
+  lastTestedAt    DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model MarketingPost {
+  id              String        @id @default(uuid())
+  content         String        @db.Text
+  channels        String        
+  status          String        @default("SCHEDULED") 
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  createdBy       String?       
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
