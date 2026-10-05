@@ -216,6 +216,13 @@ export const deleteContact = async (id: string) => {
   });
 };
 
+export const bulkDeleteContacts = async (ids: string[]) => {
+  return await prisma.contact.updateMany({
+    where: { id: { in: ids } },
+    data: { deletedAt: new Date() }
+  });
+};
+
 export const bulkCreateContacts = async (contactsList: any[], defaultOwnerId?: string) => {
   const created = [];
   for (const item of contactsList) {
@@ -228,3 +235,4 @@ export const bulkCreateContacts = async (contactsList: any[], defaultOwnerId?: s
   }
   return created;
 };
+

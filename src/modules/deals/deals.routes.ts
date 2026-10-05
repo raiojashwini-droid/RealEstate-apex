@@ -5,6 +5,7 @@ import {
   updateDealStageHandler, 
   updateDealAnalysisHandler,
   deleteDealHandler,
+  bulkDeleteDealsHandler,
   assignDealHandler
 } from './deals.controller';
 import { authMiddleware } from '../../middleware/auth.middleware';
@@ -16,6 +17,8 @@ router.use(authMiddleware);
 router.get('/pipeline', getDealsPipelineHandler);
 router.get('/', getDealsPipelineHandler);
 router.post('/', createDealHandler);
+router.post('/bulk-delete', bulkDeleteDealsHandler);
+router.delete('/bulk', bulkDeleteDealsHandler);
 router.put('/:id/stage', updateDealStageHandler);
 router.put('/:id/assign', assignDealHandler);
 router.put('/:id/analysis', updateDealAnalysisHandler);

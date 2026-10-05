@@ -53,3 +53,17 @@ export const bulkCreateContactsHandler = async (req: Request, res: Response, nex
     next(error);
   }
 };
+
+export const bulkDeleteContactsHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'ids array is required' } });
+    }
+    const data = await contactsService.bulkDeleteContacts(ids);
+    res.status(200).json({ success: true, message: 'Contacts deleted successfully', data });
+  } catch (error) {
+    next(error);
+  }
+};
+

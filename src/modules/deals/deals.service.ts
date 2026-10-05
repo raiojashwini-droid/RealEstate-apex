@@ -1,7 +1,9 @@
 import prisma from '../../prisma';
 
 export const getDealsPipeline = async (user?: { id: string; role: string }) => {
-  const whereClause: any = {};
+  const whereClause: any = {
+    deletedAt: null
+  };
   
   if (user && user.role === 'AGENT') {
     whereClause.ownerId = user.id;
@@ -283,6 +285,16 @@ export const updateDealAnalysis = async (dealId: string, data: any) => {
 export const deleteDeal = async (id: string) => {
   return await prisma.deal.update({
     where: { id },
+    data: { 
+      status: 'LOST',
+      deletedAt: new Date()
+    }
+  });
+};
+
+export const bulkDeleteDeals = async (ids: string[]) => {
+  return await prisma.deal.updateMany({
+    where: { id: { in: ids } },
     data: { 
       status: 'LOST',
       deletedAt: new Date()

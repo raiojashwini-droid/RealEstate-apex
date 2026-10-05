@@ -52,6 +52,19 @@ export const deleteDealHandler = async (req: Request, res: Response, next: NextF
   }
 };
 
+export const bulkDeleteDealsHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: { message: 'ids array is required' } });
+    }
+    const data = await dealsService.bulkDeleteDeals(ids);
+    res.status(200).json({ success: true, message: 'Deals deleted successfully', data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const assignDealHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = String(req.params.id);
