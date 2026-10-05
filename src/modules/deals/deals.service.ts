@@ -289,3 +289,63 @@ export const deleteDeal = async (id: string) => {
     }
   });
 };
+
+export const assignDeal = async (dealId: string, rawOwnerId: string) => {
+  let resolvedUser = await prisma.user.findUnique({ where: { id: rawOwnerId } });
+
+  if (!resolvedUser) {
+    resolvedUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: { contains: rawOwnerId } },
+          { firstName: { contains: rawOwnerId } },
+          { lastName: { contains: rawOwnerId } }
+        ]
+      }
+    });
+  }
+
+  if (!resolvedUser) {
+    throw new Error('User not found');
+  }
+
+  const updatedDeal = await prisma.deal.update({
+    where: { id: dealId },
+    data: { ownerId: resolvedUser.id },
+    include: {
+      property: true,
+      contact: true,
+      stage: true,
+      owner: true
+    }
+  });
+
+  return {
+    id: updatedDeal.id,
+    address: updatedDeal.property.address,
+    city: updatedDeal.property.city,
+    state: updatedDeal.property.state,
+    zip: updatedDeal.property.zip,
+    askingPrice: updatedDeal.property.askingPrice || 0,
+    contactId: updatedDeal.contactId,
+    contactName: updatedDeal.contact.fullName,
+    realtorName: updatedDeal.contact.fullName,
+    realtorBrokerage: updatedDeal.contact.brokerage || 'Unknown',
+    stage: updatedDeal.stage.name,
+    grade: updatedDeal.gradeSnapshot || 'B',
+    isArchived: updatedDeal.status !== 'OPEN',
+    ownerId: updatedDeal.ownerId,
+    ownerName: updatedDeal.owner ? `${updatedDeal.owner.firstName} ${updatedDeal.owner.lastName}` : 'Unassigned',
+    createdAt: updatedDeal.createdAt.toISOString().split('T')[0],
+    updatedAt: updatedDeal.updatedAt.toISOString().split('T')[0],
+    propertyDetails: {
+      beds: updatedDeal.property.beds,
+      baths: updatedDeal.property.baths,
+      sqft: updatedDeal.property.squareFeet,
+      yearBuilt: updatedDeal.property.yearBuilt,
+      condition: 'Unknown',
+      type: updatedDeal.property.type
+    }
+  };
+};
+

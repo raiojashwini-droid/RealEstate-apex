@@ -51,3 +51,15 @@ export const deleteDealHandler = async (req: Request, res: Response, next: NextF
     next(error);
   }
 };
+
+export const assignDealHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = String(req.params.id);
+    const { ownerId } = req.body;
+    const updated = await dealsService.assignDeal(id, ownerId);
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
