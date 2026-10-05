@@ -37,6 +37,16 @@ export const createUser = async (data: any, actorId: string) => {
         lastName: data.lastName,
         role: data.role,
         passwordHash
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true
       }
     });
 
@@ -58,7 +68,17 @@ export const updateUserRole = async (id: string, newRole: any, actorId: string) 
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
       where: { id },
-      data: { role: newRole }
+      data: { role: newRole },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        lastLoginAt: true,
+        createdAt: true
+      }
     });
     
     await tx.auditLog.create({

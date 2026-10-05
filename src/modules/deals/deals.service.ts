@@ -49,6 +49,52 @@ export const getDealsPipeline = async (user?: { id: string; role: string }) => {
   }));
 };
 
+export const getDealById = async (id: string) => {
+  const d = await prisma.deal.findUnique({
+    where: { id },
+    include: {
+      property: true,
+      contact: true,
+      stage: true,
+      owner: true
+    }
+  });
+
+  if (!d || d.deletedAt) {
+    return null;
+  }
+
+  return {
+    id: d.id,
+    address: d.property.address,
+    city: d.property.city,
+    state: d.property.state,
+    zip: d.property.zip,
+    askingPrice: d.property.askingPrice || 0,
+    contactId: d.contactId,
+    contactName: d.contact.fullName,
+    realtorName: d.contact.fullName,
+    realtorPhone: d.contact.mobilePhone,
+    realtorEmail: d.contact.email,
+    realtorBrokerage: d.contact.brokerage || 'Unknown',
+    stage: d.stage.name,
+    grade: d.gradeSnapshot || 'B',
+    isArchived: d.status !== 'OPEN',
+    ownerId: d.ownerId,
+    ownerName: d.owner ? `${d.owner.firstName} ${d.owner.lastName}` : 'Unassigned',
+    createdAt: d.createdAt.toISOString().split('T')[0],
+    updatedAt: d.updatedAt.toISOString().split('T')[0],
+    propertyDetails: {
+      beds: d.property.beds,
+      baths: d.property.baths,
+      sqft: d.property.squareFeet,
+      yearBuilt: d.property.yearBuilt,
+      condition: 'Good structure',
+      type: d.property.type
+    }
+  };
+};
+
 export const createDeal = async (data: any, creatorUserId?: string) => {
   // 1. Resolve or create Contact
   let contact = null;

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { 
   getDealsPipelineHandler, 
+  getDealByIdHandler,
   createDealHandler, 
   updateDealStageHandler, 
   updateDealAnalysisHandler,
@@ -16,6 +17,7 @@ router.use(authMiddleware);
 
 router.get('/pipeline', getDealsPipelineHandler);
 router.get('/', getDealsPipelineHandler);
+router.get('/:id', getDealByIdHandler);
 router.post('/', createDealHandler);
 router.post('/bulk-delete', bulkDeleteDealsHandler);
 router.delete('/bulk', bulkDeleteDealsHandler);

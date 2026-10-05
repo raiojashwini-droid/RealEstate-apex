@@ -20,6 +20,32 @@ export const getDashboardMetrics = async (userId?: string, role?: string) => {
     where: { ...messageFilter, direction: 'OUTBOUND', createdAt: { gte: oneDayAgo } }
   });
 
+  // Dynamic Reply Rate Calculation
+  const respondedContacts = await prisma.contact.count({
+    where: {
+      ...contactFilter,
+      status: { in: ['RESPONDED_QUALIFYING', 'NEEDS_HUMAN_TOUCH', 'LEAD_CREATED'] }
+    }
+  });
+  const contactsWithOutreach = await prisma.contact.count({
+    where: {
+      ...contactFilter,
+      status: { notIn: ['QUEUED_FOR_OUTREACH'] }
+    }
+  });
+  const replyRate = contactsWithOutreach > 0
+    ? Number(((respondedContacts / contactsWithOutreach) * 100).toFixed(1))
+    : 0;
+
+  // Dynamic SMS Channel Percentage Calculation
+  const totalMessages = await prisma.message.count({ where: messageFilter });
+  const smsMessages = await prisma.message.count({
+    where: { ...messageFilter, channel: 'SMS' }
+  });
+  const smsPercentage = totalMessages > 0
+    ? Math.round((smsMessages / totalMessages) * 100)
+    : 100;
+
   // 3. Inbox Active Dialogs
   const conversationFilter = isRestricted ? { contact: { ownerId: userId } } : {};
   const activeThreads = await prisma.conversation.count({
@@ -29,8 +55,13 @@ export const getDashboardMetrics = async (userId?: string, role?: string) => {
     where: { ...conversationFilter, automationMode: 'ESCALATED' }
   });
 
-  // 4. Pipeline Active Deals Volume
+  // Dynamic Addresses / Properties Captured Count
   const dealFilter = isRestricted ? { contact: { ownerId: userId } } : {};
+  const addresses = await prisma.deal.count({
+    where: { ...dealFilter, status: { in: ['OPEN', 'WON'] } }
+  });
+
+  // 4. Pipeline Active Deals Volume
   const activeDealsList = await prisma.deal.findMany({
     where: { ...dealFilter, status: 'OPEN' },
     include: { property: true }
@@ -102,13 +133,13 @@ export const getDashboardMetrics = async (userId?: string, role?: string) => {
     },
     activity: {
       outreachDispatched,
-      replyRate: 18.4,
-      smsPercentage: 84
+      replyRate,
+      smsPercentage
     },
     inbox: {
       activeThreads,
       needsHuman,
-      addresses: 0
+      addresses
     },
     pipeline: {
       activeDealsCount,

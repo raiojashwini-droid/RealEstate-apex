@@ -117,6 +117,35 @@ export const getContactsList = async () => {
   return contacts.map(formatContactResponse);
 };
 
+export const getContactById = async (id: string) => {
+  const contact = await prisma.contact.findUnique({
+    where: { id },
+    include: {
+      owner: true,
+      cadenceEnrollments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      conversations: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        include: {
+          grades: { orderBy: { createdAt: 'desc' }, take: 1 },
+          messages: { orderBy: { createdAt: 'desc' } }
+        }
+      },
+      deals: {
+        include: { property: true }
+      },
+      notes: { where: { deletedAt: null }, orderBy: { createdAt: 'desc' } },
+      tasks: { orderBy: { createdAt: 'desc' } }
+    }
+  });
+
+  if (!contact || contact.deletedAt) {
+    return null;
+  }
+
+  return formatContactResponse(contact);
+};
+
 export const createContact = async (data: any, defaultOwnerId?: string) => {
   const fullName = data.name || data.fullName || 'Unnamed Realtor';
   const email = data.email ? data.email.trim() : null;

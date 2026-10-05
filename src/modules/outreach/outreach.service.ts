@@ -49,10 +49,38 @@ export const getOutreachPipeline = async () => {
     orderBy: { updatedAt: 'desc' }
   });
 
+  const now = Date.now();
+
   return contacts.map(c => {
     const cad = c.cadenceEnrollments[0];
     const conv = c.conversations[0];
     const grade = conv?.grades[0];
+
+    // Dynamic Nurture Day Calculation
+    const refDate = cad?.cadenceStartAt || c.lastContactedAt || c.createdAt;
+    const daysSince = Math.max(1, Math.floor((now - new Date(refDate).getTime()) / (1000 * 60 * 60 * 24)));
+    const nurtureDay = c.status === 'QUEUED_FOR_OUTREACH' ? 0 : (((daysSince - 1) % 30) + 1);
+    const recycleCount = Math.floor((daysSince - 1) / 30);
+
+    // Dynamic Next Scheduled Touch Calculation
+    let nextScheduledTouch = 'Touch 1 Ready';
+    const currentTouch = cad ? cad.touchNumber : (c.lastContactedAt ? 1 : 0);
+
+    if (c.status === 'NURTURE_30_DAY') {
+      nextScheduledTouch = 'In 30-Day Nurture Loop';
+    } else if (c.status === 'OPTED_OUT_DND' || c.status === 'NOT_INTERESTED' || c.status === 'WRONG_NUMBER') {
+      nextScheduledTouch = 'Opted Out / Closed';
+    } else if (cad?.nextTouchAt) {
+      const nextDate = new Date(cad.nextTouchAt);
+      const isPast = nextDate.getTime() <= now;
+      nextScheduledTouch = isPast
+        ? `Touch ${Math.min(5, currentTouch + 1)} Ready`
+        : `Touch ${Math.min(5, currentTouch + 1)} on ${nextDate.toLocaleDateString()}`;
+    } else if (currentTouch >= 5) {
+      nextScheduledTouch = 'In 30-Day Nurture Loop';
+    } else if (currentTouch > 0) {
+      nextScheduledTouch = `Touch ${currentTouch + 1} Ready`;
+    }
 
     return {
       id: c.id,
@@ -66,12 +94,12 @@ export const getOutreachPipeline = async () => {
       grade: grade?.letterGrade || 'B',
       score: grade?.score || 75,
       sequenceInfo: {
-        currentTouch: cad ? cad.touchNumber : 0,
+        currentTouch,
         totalTouches: 5,
-        recycleCount: 0,
-        nurtureDay: 18,
+        recycleCount,
+        nurtureDay,
         lastTouchDate: c.lastContactedAt ? c.lastContactedAt.toISOString().split('T')[0] : 'Never',
-        nextScheduledTouch: 'Touch 1 Ready',
+        nextScheduledTouch,
         channel: 'sms' as const
       },
       propertyDealIds: c.deals.map(d => d.id)

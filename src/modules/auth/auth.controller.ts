@@ -20,6 +20,7 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
       success: true,
       data: {
         accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
         user: data.user,
         permissions: [] // Dummy permissions for now
       }
