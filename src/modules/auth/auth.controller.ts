@@ -21,7 +21,7 @@ export const loginHandler = async (req: Request, res: Response, next: NextFuncti
       data: {
         accessToken: data.accessToken,
         user: data.user,
-        permissions: [] // Dummy permissions for now
+        permissions: data.user.permissions || []
       }
     });
   } catch (error: any) {
@@ -63,7 +63,7 @@ export const getMeHandler = async (req: Request, res: Response, next: NextFuncti
 
     return res.status(200).json({
       success: true,
-      data: { user, permissions: [] }
+      data: { user, permissions: user.permissions || [] }
     });
   } catch (error) {
     next(error);

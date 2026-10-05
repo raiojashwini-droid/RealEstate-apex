@@ -48,7 +48,8 @@ export const login = async (email: string, password: string, ipAddress?: string,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions
     }
   };
 };
@@ -70,6 +71,7 @@ export const getMe = async (userId: string) => {
       lastName: true,
       role: true,
       isActive: true,
+      permissions: true,
       lastLoginAt: true
     }
   });

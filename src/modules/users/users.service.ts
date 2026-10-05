@@ -10,6 +10,7 @@ export const getUsers = async () => {
       lastName: true,
       role: true,
       status: true,
+      permissions: true,
       lastLoginAt: true,
       createdAt: true
     }
@@ -19,7 +20,7 @@ export const getUsers = async () => {
 export const getUserById = async (id: string) => {
   return prisma.user.findUnique({
     where: { id },
-    select: { id: true, email: true, firstName: true, lastName: true, role: true, status: true }
+    select: { id: true, email: true, firstName: true, lastName: true, role: true, status: true, permissions: true }
   });
 };
 
@@ -82,6 +83,7 @@ export const updateUser = async (id: string, data: any, actorId: string) => {
       email: data.email,
       role: data.role,
       jobTitle: data.jobTitle,
+      permissions: data.permissions !== undefined ? data.permissions : undefined,
     };
 
     if (data.password) {
