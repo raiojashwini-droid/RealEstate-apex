@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const conversations_controller_1 = require("./conversations.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authMiddleware);
+router.get('/', conversations_controller_1.getConversationsListHandler);
+router.post('/:id/messages', conversations_controller_1.createMessageHandler);
+router.patch('/:id/status', conversations_controller_1.updateConversationStatusHandler);
+router.post('/:id/grades', conversations_controller_1.overrideGradeHandler);
+exports.default = router;
