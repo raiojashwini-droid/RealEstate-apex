@@ -5,7 +5,7 @@ import { requireAdmin, requireManagerOrAbove } from '../../middleware/rbac.middl
 
 const router = Router();
 
-router.get('/', authMiddleware, requireManagerOrAbove, listUsersHandler);
+router.get('/', authMiddleware, listUsersHandler);
 router.post('/', authMiddleware, requireAdmin, createUserHandler);
 router.patch('/:id/role', authMiddleware, requireAdmin, changeRoleHandler);
 
