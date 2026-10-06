@@ -32,7 +32,12 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 
     // Attach user payload to request
-    (req as any).user = { id: user.id, role: user.role, sessionId: session.id };
+    (req as any).user = {
+      id: user.id,
+      role: user.role,
+      sessionId: session.id,
+      permissions: user.permissions
+    };
     next();
   } catch (error) {
     return res.status(401).json({ success: false, error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'Invalid token' } });

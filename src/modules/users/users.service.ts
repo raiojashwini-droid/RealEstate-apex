@@ -1,5 +1,7 @@
 import prisma from '../../prisma';
 import bcrypt from 'bcryptjs';
+import { normalizePermissions } from '../../utils/permissions.util';
+import { UserRole } from '../../types/auth';
 
 export const getUsers = async () => {
   return prisma.user.findMany({
@@ -87,7 +89,7 @@ export const updateUser = async (id: string, data: any, actorId: string) => {
     email: data.email,
     role: data.role,
     jobTitle: data.jobTitle,
-    permissions: data.permissions !== undefined ? data.permissions : undefined,
+    permissions: data.permissions !== undefined ? normalizePermissions(data.permissions, (data.role || 'AGENT') as UserRole) : undefined,
   };
 
   if (passwordHash) {
