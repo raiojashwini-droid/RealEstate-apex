@@ -76,26 +76,31 @@ export const updateUserRole = async (id: string, newRole: any, actorId: string) 
 };
 
 export const updateUser = async (id: string, data: any, actorId: string) => {
-  return prisma.$transaction(async (tx) => {
-    let updateData: any = {
-      firstName: data.firstName,
-      lastName: data.lastName,
-      email: data.email,
-      role: data.role,
-      jobTitle: data.jobTitle,
-      permissions: data.permissions !== undefined ? data.permissions : undefined,
-    };
+  let passwordHash: string | undefined;
+  if (data.password) {
+    passwordHash = await bcrypt.hash(data.password, 12);
+  }
 
-    if (data.password) {
-      updateData.passwordHash = await bcrypt.hash(data.password, 12);
-    }
+  let updateData: any = {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    role: data.role,
+    jobTitle: data.jobTitle,
+    permissions: data.permissions !== undefined ? data.permissions : undefined,
+  };
 
-    const user = await tx.user.update({
-      where: { id },
-      data: updateData
-    });
+  if (passwordHash) {
+    updateData.passwordHash = passwordHash;
+  }
 
-    await tx.auditLog.create({
+  const user = await prisma.user.update({
+    where: { id },
+    data: updateData
+  });
+
+  try {
+    await prisma.auditLog.create({
       data: {
         actorUserId: actorId,
         action: 'USER_UPDATE',
@@ -104,8 +109,11 @@ export const updateUser = async (id: string, data: any, actorId: string) => {
         newValuesJson: JSON.stringify({ email: user.email, role: user.role, firstName: user.firstName })
       }
     });
-    return user;
-  });
+  } catch (err) {
+    console.error("Audit log failed, but user updated", err);
+  }
+
+  return user;
 };
 
 export const deleteUser = async (id: string, actorId: string) => {
